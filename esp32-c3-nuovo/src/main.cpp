@@ -7,11 +7,8 @@ const char* ssid     = "SpotHotGirl";
 const char* password = "giorgio1234";
 
 // Definiamo i pin
-#define LED_R    7
-#define LED_G    8
-#define LED_B    6
-#define PIN_SALI    4
-#define PIN_SCENDI  5
+#define PIN_SALI    7
+#define PIN_SCENDI  8
 
 // --- RISORSE FREERTOS ---
 QueueHandle_t codaComandi;  //In C, quando crei qualcosa di complesso come un file o una coda, il sistema operativo ti dà un "Handle" (una maniglia), non l'oggetto intero
@@ -19,25 +16,20 @@ QueueHandle_t codaComandi;  //In C, quando crei qualcosa di complesso come un fi
 
 // Prototipi delle funzioni Task (i "lavoratori")
 void TaskWiFi(void *pvParameters);
-void TaskRosso(void *pvParameters);
-void TaskVerde(void *pvParameters);
-void TaskBlu(void *pvParameters);
+void TaskMotore(void *pvParameters);
+//void TaskVerde(void *pvParameters);
 
 void setup() {
     Serial.begin(115200);
 
     // Creazione della CODA (può contenere 10 interi), null se fallisce
     codaComandi = xQueueCreate(10, sizeof(int));
-    
-    pinMode(LED_R, OUTPUT);
-    pinMode(LED_G, OUTPUT);
-    pinMode(LED_B, OUTPUT);
 
     Serial.println("--- AVVIO TASK FREERTOS ---");
     if (codaComandi != NULL) { //crea i task solo se coda è stata creata correttamente, se no non vale neanche la pena crearli 
         // Creazione Task
         xTaskCreate(TaskWiFi,       "WiFi_Task",   4096, NULL, 1, NULL);
-        //xTaskCreate(TaskMotore,     "Motor_Task",  2048, NULL, 2, NULL);
+        xTaskCreate(TaskMotore,     "Motor_Task",  2048, NULL, 2, NULL);
         //xTaskCreate(TaskSimulatore, "Sim_Task",    2048, NULL, 1, NULL);
     }
     
@@ -45,10 +37,7 @@ void setup() {
 
     // Creiamo i 3 Task (i tre processi paralleli)
     // xTaskCreate(Funzione, "Nome", Stack, Parametro, Priorità, Handle)
-    
-    xTaskCreate(TaskRosso, "Rosso", 2048, NULL, 1, NULL);
-    xTaskCreate(TaskVerde, "Verde", 2048, NULL, 1, NULL);
-    xTaskCreate(TaskBlu,   "Blu",   2048, NULL, 1, NULL);
+
 }
 
 void loop() {
@@ -135,16 +124,39 @@ void TaskSimulatore(void *pvParameters) {
 }
     */
 
-void TaskRosso(void *pvParameters) {
-    for (;;) { // Un task non deve mai uscire, quindi usiamo un loop infinito
-        digitalWrite(LED_R, HIGH);
-        vTaskDelay(1000 / portTICK_PERIOD_MS); // Aspetta 1 secondo (non blocca gli altri!)
-        digitalWrite(LED_R, LOW);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+void TaskMotore(void *pvParameters) {
+    // Inizialmente mettiamo i pin in INPUT per tenerli spenti
+    pinMode(PIN_SALI, INPUT);
+    pinMode(PIN_SCENDI, INPUT);
+
+    for (;;) {
+        // --- SALITA ---
+        Serial.println("Accendo SALITA...");
+        pinMode(PIN_SALI, OUTPUT);
+        digitalWrite(PIN_SALI, LOW); // Accende
+        vTaskDelay(10000 / portTICK_PERIOD_MS); 
+
+        // --- SPEGNIMENTO ---
+        Serial.println("Spengo tutto (Pausa 5s)...");
+        pinMode(PIN_SALI, INPUT);    // "Stacca" il pin
+        pinMode(PIN_SCENDI, INPUT);  // "Stacca" il pin
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
+
+        // --- DISCESA ---
+        Serial.println("Accendo DISCESA...");
+        pinMode(PIN_SCENDI, OUTPUT);
+        digitalWrite(PIN_SCENDI, LOW); // Accende
+        vTaskDelay(10000 / portTICK_PERIOD_MS);
+
+        // --- SPEGNIMENTO ---
+        Serial.println("Spengo tutto (Pausa 5s)...");
+        pinMode(PIN_SALI, INPUT);
+        pinMode(PIN_SCENDI, INPUT);
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
 }
 
-void TaskVerde(void *pvParameters) {
+/*void TaskVerde(void *pvParameters) {
     for (;;) {
         digitalWrite(LED_G, HIGH);
         vTaskDelay(500 / portTICK_PERIOD_MS); // Il verde lampeggia più veloce!
@@ -152,12 +164,4 @@ void TaskVerde(void *pvParameters) {
         vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 }
-
-void TaskBlu(void *pvParameters) {
-    for (;;) {
-        digitalWrite(LED_B, HIGH);
-        vTaskDelay(1500 / portTICK_PERIOD_MS); // Il blu è il più lento
-        digitalWrite(LED_B, LOW);
-        vTaskDelay(1500 / portTICK_PERIOD_MS);
-    }
-}
+*/
